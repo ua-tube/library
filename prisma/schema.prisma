@@ -1,0 +1,162 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Creator {
+  id                 String              @id @db.Uuid
+  displayName        String              @map("display_name")
+  nickname           String
+  thumbnailUrl       String?             @map("thumbnail_url")
+  Playlists          Playlist[]
+  Videos             Video[]
+  LikedPlaylist      LikedPlaylist?
+  DislikedPlaylist   DislikedPlaylist?
+  WatchLaterPlaylist WatchLaterPlaylist?
+
+  @@map("creators")
+}
+
+model Video {
+  id                      String                   @id @db.Uuid
+  creatorId               String                   @map("creator_id") @db.Uuid
+  Creator                 Creator                  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  title                   String
+  description             String?
+  tags                    String?
+  thumbnailUrl            String?                  @map("thumbnail_url")
+  previewThumbnailUrl     String?                  @map("preview_thumbnail_url")
+  visibility              VideoVisibility
+  status                  VideoStatus
+  createdAt               DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  VideoMetrics            VideoMetrics?
+  PlaylistItems           PlaylistItem[]
+  WatchLaterPlaylistItems WatchLaterPlaylistItem[]
+  LikedPlaylistItems      LikedPlaylistItem[]
+  DislikedPlaylistItems   DislikedPlaylistItem[]
+
+  @@map("videos")
+}
+
+enum VideoStatus {
+  Created
+  Registered
+  RegistrationFailed
+  Unregistered
+
+  @@map("video_statuses")
+}
+
+enum VideoVisibility {
+  Private
+  Unlisted
+  Public
+
+  @@map("video_visibilities")
+}
+
+model VideoMetrics {
+  videoId       String @id @default(uuid()) @map("video_id") @db.Uuid
+  Video         Video  @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  viewsCount    BigInt @default(0) @map("views_count")
+  commentsCount BigInt @default(0) @map("comments_count")
+  likesCount    BigInt @default(0) @map("likes_count")
+  dislikesCount BigInt @default(0) @map("dislikes_count")
+
+  @@map("video_metrics")
+}
+
+model Playlist {
+  id            String             @id @default(uuid()) @db.Uuid
+  creatorId     String             @map("creator_id") @db.Uuid
+  Creator       Creator            @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  title         String
+  description   String?
+  visibility    PlaylistVisibility
+  itemsCount    Int                @map("items_count")
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  PlaylistItems PlaylistItem[]
+
+  @@map("playlists")
+}
+
+enum PlaylistVisibility {
+  Private
+  Unlisted
+  Public
+
+  @@map("playlist_visibilities")
+}
+
+model PlaylistItem {
+  playlistId String   @map("playlist_id") @db.Uuid
+  Playlist   Playlist @relation(fields: [playlistId], references: [id])
+  videoId    String   @map("video_id") @db.Uuid
+  Video      Video    @relation(fields: [videoId], references: [id])
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@id([playlistId, videoId])
+  @@map("playlists_items")
+}
+
+model LikedPlaylist {
+  creatorId          String              @id @map("creator_id") @db.Uuid
+  Creator            Creator             @relation(fields: [creatorId], references: [id])
+  itemsCount         Int                 @map("items_count")
+  LikedPlaylistItems LikedPlaylistItem[]
+
+  @@map("liked_playlists")
+}
+
+model LikedPlaylistItem {
+  likedPlaylistId String        @map("liked_playlist_id") @db.Uuid
+  LikedPlaylist   LikedPlaylist @relation(fields: [likedPlaylistId], references: [creatorId])
+  videoId         String        @map("video_id") @db.Uuid
+  Video           Video         @relation(fields: [videoId], references: [id])
+
+  @@id([likedPlaylistId, videoId])
+  @@map("liked_playlists_items")
+}
+
+model DislikedPlaylist {
+  creatorId             String                 @id @map("creator_id") @db.Uuid
+  Creator               Creator                @relation(fields: [creatorId], references: [id])
+  itemsCount            Int                    @map("items_count")
+  DislikedPlaylistItems DislikedPlaylistItem[]
+
+  @@map("disliked_playlists")
+}
+
+model DislikedPlaylistItem {
+  dislikedPlaylistId String           @map("disliked_playlist_id") @db.Uuid
+  DislikedPlaylist   DislikedPlaylist @relation(fields: [dislikedPlaylistId], references: [creatorId])
+  videoId            String           @map("video_id") @db.Uuid
+  Video              Video            @relation(fields: [videoId], references: [id])
+
+  @@id([dislikedPlaylistId, videoId])
+  @@map("disliked_playlists_items")
+}
+
+model WatchLaterPlaylist {
+  creatorId               String                   @id @map("creator_id") @db.Uuid
+  Creator                 Creator                  @relation(fields: [creatorId], references: [id])
+  itemsCount              Int                      @map("items_count")
+  WatchLaterPlaylistItems WatchLaterPlaylistItem[]
+
+  @@map("watch_later_playlists")
+}
+
+model WatchLaterPlaylistItem {
+  watchLaterPlaylistId String             @map("watch_later_playlist_id") @db.Uuid
+  WatchLaterPlaylist   WatchLaterPlaylist @relation(fields: [watchLaterPlaylistId], references: [creatorId])
+  videoId              String             @map("video_id") @db.Uuid
+  Video                Video              @relation(fields: [videoId], references: [id])
+
+  @@id([watchLaterPlaylistId, videoId])
+  @@map("watch_later_playlists_items")
+}
