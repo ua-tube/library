@@ -22,8 +22,6 @@ CREATE TABLE "videos" (
     "id" UUID NOT NULL,
     "creator_id" UUID NOT NULL,
     "title" TEXT NOT NULL,
-    "description" TEXT,
-    "tags" TEXT,
     "thumbnail_url" TEXT,
     "preview_thumbnail_url" TEXT,
     "visibility" "video_visibilities" NOT NULL,
@@ -37,9 +35,6 @@ CREATE TABLE "videos" (
 CREATE TABLE "video_metrics" (
     "video_id" UUID NOT NULL,
     "views_count" BIGINT NOT NULL DEFAULT 0,
-    "comments_count" BIGINT NOT NULL DEFAULT 0,
-    "likes_count" BIGINT NOT NULL DEFAULT 0,
-    "dislikes_count" BIGINT NOT NULL DEFAULT 0,
 
     CONSTRAINT "video_metrics_pkey" PRIMARY KEY ("video_id")
 );
@@ -51,11 +46,19 @@ CREATE TABLE "playlists" (
     "title" TEXT NOT NULL,
     "description" TEXT,
     "visibility" "playlist_visibilities" NOT NULL,
-    "items_count" INTEGER NOT NULL,
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMPTZ(6) NOT NULL,
 
     CONSTRAINT "playlists_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "playlist_metrics" (
+    "playlist_id" UUID NOT NULL,
+    "views_count" BIGINT NOT NULL,
+    "items_count" INTEGER NOT NULL,
+
+    CONSTRAINT "playlist_metrics_pkey" PRIMARY KEY ("playlist_id")
 );
 
 -- CreateTable
@@ -123,6 +126,9 @@ ALTER TABLE "video_metrics" ADD CONSTRAINT "video_metrics_video_id_fkey" FOREIGN
 
 -- AddForeignKey
 ALTER TABLE "playlists" ADD CONSTRAINT "playlists_creator_id_fkey" FOREIGN KEY ("creator_id") REFERENCES "creators"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "playlist_metrics" ADD CONSTRAINT "playlist_metrics_playlist_id_fkey" FOREIGN KEY ("playlist_id") REFERENCES "playlists"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "playlists_items" ADD CONSTRAINT "playlists_items_playlist_id_fkey" FOREIGN KEY ("playlist_id") REFERENCES "playlists"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

@@ -26,8 +26,6 @@ model Video {
   creatorId               String                   @map("creator_id") @db.Uuid
   Creator                 Creator                  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
   title                   String
-  description             String?
-  tags                    String?
   thumbnailUrl            String?                  @map("thumbnail_url")
   previewThumbnailUrl     String?                  @map("preview_thumbnail_url")
   visibility              VideoVisibility
@@ -60,29 +58,35 @@ enum VideoVisibility {
 }
 
 model VideoMetrics {
-  videoId       String @id @default(uuid()) @map("video_id") @db.Uuid
-  Video         Video  @relation(fields: [videoId], references: [id], onDelete: Cascade)
-  viewsCount    BigInt @default(0) @map("views_count")
-  commentsCount BigInt @default(0) @map("comments_count")
-  likesCount    BigInt @default(0) @map("likes_count")
-  dislikesCount BigInt @default(0) @map("dislikes_count")
+  videoId    String @id @default(uuid()) @map("video_id") @db.Uuid
+  Video      Video  @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  viewsCount BigInt @default(0) @map("views_count")
 
   @@map("video_metrics")
 }
 
 model Playlist {
-  id            String             @id @default(uuid()) @db.Uuid
-  creatorId     String             @map("creator_id") @db.Uuid
-  Creator       Creator            @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-  title         String
-  description   String?
-  visibility    PlaylistVisibility
-  itemsCount    Int                @map("items_count")
-  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
-  PlaylistItems PlaylistItem[]
+  id              String             @id @default(uuid()) @db.Uuid
+  creatorId       String             @map("creator_id") @db.Uuid
+  Creator         Creator            @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  title           String
+  description     String?
+  visibility      PlaylistVisibility
+  createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  PlaylistItems   PlaylistItem[]
+  PlaylistMetrics PlaylistMetrics?
 
   @@map("playlists")
+}
+
+model PlaylistMetrics {
+  playlistId String   @id @map("playlist_id") @db.Uuid
+  Playlist   Playlist @relation(fields: [playlistId], references: [id])
+  viewsCount BigInt   @map("views_count")
+  itemsCount Int      @map("items_count")
+
+  @@map("playlist_metrics")
 }
 
 enum PlaylistVisibility {

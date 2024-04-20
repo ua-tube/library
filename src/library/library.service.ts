@@ -1,12 +1,60 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma';
-import { PaginationDto } from './dto';
+import { CreatePlaylistDto, PaginationDto, UpdatePlaylistDto } from './dto';
 import { buildPlaylistQueryBody, paginate } from './helpers';
 import { isUUID } from 'class-validator';
+import axios from 'axios';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class LibraryService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(LibraryService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
+  ) {}
+
+  async createPlaylist(dto: CreatePlaylistDto, creatorId: string) {
+    await this.checkCreatorSync(creatorId);
+
+    return this.prisma.playlist.create({
+      data: {
+        creatorId,
+        ...dto,
+        PlaylistMetrics: {
+          create: {
+            itemsCount: 0,
+            viewsCount: 0,
+          },
+        },
+      },
+    });
+  }
+
+  async updatePlaylist(playlistId: string, dto: UpdatePlaylistDto) {
+    const playlist = await this.prisma.playlist.findUnique({
+      where: { id: playlistId },
+      select: { id: true },
+    });
+
+    if (!playlist) throw new BadRequestException('Playlist is not found');
+
+    return this.prisma.playlist.update({
+      where: { id: playlistId },
+      data: dto,
+    });
+  }
+
+  async deletePlaylist(playlistId: string) {
+    try {
+      return await this.prisma.playlist.delete({
+        where: { id: playlistId },
+      });
+    } catch {
+      throw new BadRequestException('Playlist not found');
+    }
+  }
 
   async getLikedPlaylist(creatorId: string, pagination: PaginationDto) {
     const result = await this.prisma.likedPlaylist.findUnique({
@@ -59,17 +107,22 @@ export class LibraryService {
         title: true,
         description: true,
         visibility: true,
-        itemsCount: true,
         createdAt: true,
         updatedAt: true,
         Creator: true,
         PlaylistItems: buildPlaylistQueryBody(pagination),
+        PlaylistMetrics: true,
       },
     });
 
     return paginate({
-      data: result?.PlaylistItems || [],
-      count: result?.itemsCount || 0,
+      data:
+        result?.PlaylistItems?.map(
+          (x) =>
+            (x.Video.VideoMetrics.viewsCount =
+              `${x.Video.VideoMetrics.viewsCount}` as any),
+        ) || [],
+      count: result?.PlaylistMetrics.itemsCount || 0,
       ...pagination,
     });
   }
@@ -110,13 +163,13 @@ export class LibraryService {
     });
   }
 
-  async addToPlaylist(playlist: string, videoId: string) {
+  async addToPlaylist(playlistId: string, videoId: string) {
     await this.prisma.$transaction(async (tx) => {
       await tx.playlistItem.create({
-        data: { playlistId: playlist, videoId },
+        data: { playlistId, videoId },
       });
-      await tx.playlist.update({
-        where: { id: playlist },
+      await tx.playlistMetrics.update({
+        where: { playlistId },
         data: { itemsCount: { increment: 1 } },
       });
     });
@@ -182,10 +235,42 @@ export class LibraryService {
       await tx.playlistItem.delete({
         where: { playlistId_videoId: { playlistId, videoId } },
       });
-      await tx.playlist.update({
-        where: { id: playlistId },
+      await tx.playlistMetrics.update({
+        where: { playlistId },
         data: { itemsCount: { decrement: 1 } },
       });
     });
+  }
+
+  private async checkCreatorSync(id: string) {
+    const creator = await this.prisma.creator.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+
+    if (!creator) {
+      try {
+        const { data } = await axios.get(
+          this.configService.get('USERS_SVC_URL'),
+          {
+            params: {
+              userId: id,
+            },
+          },
+        );
+        await this.prisma.creator.create({
+          data: {
+            id,
+            displayName: data.displayName,
+            nickname: data.nickname,
+            thumbnailUrl: data.thumbnailUrl,
+          },
+        });
+        this.logger.log(`Creator (${id}) created`);
+      } catch (e) {
+        this.logger.error(e);
+        throw new BadRequestException('Users service temporary unavailable');
+      }
+    }
   }
 }

@@ -1,9 +1,9 @@
-import { playlistQuerySelector } from '../constants';
+import { playlistVideoQuerySelector } from '../constants';
 import { PaginationDto } from '../dto';
 
 export const buildPlaylistQueryBody = (pagination: PaginationDto) => {
   return {
-    select: playlistQuerySelector,
+    select: playlistVideoQuerySelector,
     take: pagination.perPage,
     skip: (pagination.page - 1) * pagination.perPage,
   };
@@ -17,7 +17,7 @@ export interface Paginated<T> {
     pageCount: number;
     prevPage?: number;
     nextPage?: number;
-    total: number;
+    total: number | string;
   };
 }
 
