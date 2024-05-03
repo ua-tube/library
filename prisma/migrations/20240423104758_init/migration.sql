@@ -26,7 +26,7 @@ CREATE TABLE "videos" (
     "preview_thumbnail_url" TEXT,
     "visibility" "video_visibilities" NOT NULL,
     "status" "video_statuses" NOT NULL,
-    "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "created_at" TIMESTAMPTZ(6) NOT NULL,
 
     CONSTRAINT "videos_pkey" PRIMARY KEY ("id")
 );
@@ -128,37 +128,37 @@ ALTER TABLE "video_metrics" ADD CONSTRAINT "video_metrics_video_id_fkey" FOREIGN
 ALTER TABLE "playlists" ADD CONSTRAINT "playlists_creator_id_fkey" FOREIGN KEY ("creator_id") REFERENCES "creators"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "playlist_metrics" ADD CONSTRAINT "playlist_metrics_playlist_id_fkey" FOREIGN KEY ("playlist_id") REFERENCES "playlists"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "playlist_metrics" ADD CONSTRAINT "playlist_metrics_playlist_id_fkey" FOREIGN KEY ("playlist_id") REFERENCES "playlists"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "playlists_items" ADD CONSTRAINT "playlists_items_playlist_id_fkey" FOREIGN KEY ("playlist_id") REFERENCES "playlists"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "playlists_items" ADD CONSTRAINT "playlists_items_playlist_id_fkey" FOREIGN KEY ("playlist_id") REFERENCES "playlists"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "playlists_items" ADD CONSTRAINT "playlists_items_video_id_fkey" FOREIGN KEY ("video_id") REFERENCES "videos"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "playlists_items" ADD CONSTRAINT "playlists_items_video_id_fkey" FOREIGN KEY ("video_id") REFERENCES "videos"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "liked_playlists" ADD CONSTRAINT "liked_playlists_creator_id_fkey" FOREIGN KEY ("creator_id") REFERENCES "creators"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "liked_playlists" ADD CONSTRAINT "liked_playlists_creator_id_fkey" FOREIGN KEY ("creator_id") REFERENCES "creators"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "liked_playlists_items" ADD CONSTRAINT "liked_playlists_items_liked_playlist_id_fkey" FOREIGN KEY ("liked_playlist_id") REFERENCES "liked_playlists"("creator_id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "liked_playlists_items" ADD CONSTRAINT "liked_playlists_items_liked_playlist_id_fkey" FOREIGN KEY ("liked_playlist_id") REFERENCES "liked_playlists"("creator_id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "liked_playlists_items" ADD CONSTRAINT "liked_playlists_items_video_id_fkey" FOREIGN KEY ("video_id") REFERENCES "videos"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "disliked_playlists" ADD CONSTRAINT "disliked_playlists_creator_id_fkey" FOREIGN KEY ("creator_id") REFERENCES "creators"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "disliked_playlists" ADD CONSTRAINT "disliked_playlists_creator_id_fkey" FOREIGN KEY ("creator_id") REFERENCES "creators"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "disliked_playlists_items" ADD CONSTRAINT "disliked_playlists_items_disliked_playlist_id_fkey" FOREIGN KEY ("disliked_playlist_id") REFERENCES "disliked_playlists"("creator_id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "disliked_playlists_items" ADD CONSTRAINT "disliked_playlists_items_disliked_playlist_id_fkey" FOREIGN KEY ("disliked_playlist_id") REFERENCES "disliked_playlists"("creator_id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "disliked_playlists_items" ADD CONSTRAINT "disliked_playlists_items_video_id_fkey" FOREIGN KEY ("video_id") REFERENCES "videos"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "watch_later_playlists" ADD CONSTRAINT "watch_later_playlists_creator_id_fkey" FOREIGN KEY ("creator_id") REFERENCES "creators"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "watch_later_playlists" ADD CONSTRAINT "watch_later_playlists_creator_id_fkey" FOREIGN KEY ("creator_id") REFERENCES "creators"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "watch_later_playlists_items" ADD CONSTRAINT "watch_later_playlists_items_watch_later_playlist_id_fkey" FOREIGN KEY ("watch_later_playlist_id") REFERENCES "watch_later_playlists"("creator_id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "watch_later_playlists_items" ADD CONSTRAINT "watch_later_playlists_items_watch_later_playlist_id_fkey" FOREIGN KEY ("watch_later_playlist_id") REFERENCES "watch_later_playlists"("creator_id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "watch_later_playlists_items" ADD CONSTRAINT "watch_later_playlists_items_video_id_fkey" FOREIGN KEY ("video_id") REFERENCES "videos"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "watch_later_playlists_items" ADD CONSTRAINT "watch_later_playlists_items_video_id_fkey" FOREIGN KEY ("video_id") REFERENCES "videos"("id") ON DELETE CASCADE ON UPDATE CASCADE;

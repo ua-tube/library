@@ -30,7 +30,7 @@ model Video {
   previewThumbnailUrl     String?                  @map("preview_thumbnail_url")
   visibility              VideoVisibility
   status                  VideoStatus
-  createdAt               DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdAt               DateTime                 @map("created_at") @db.Timestamptz(6)
   VideoMetrics            VideoMetrics?
   PlaylistItems           PlaylistItem[]
   WatchLaterPlaylistItems WatchLaterPlaylistItem[]
@@ -82,7 +82,7 @@ model Playlist {
 
 model PlaylistMetrics {
   playlistId String   @id @map("playlist_id") @db.Uuid
-  Playlist   Playlist @relation(fields: [playlistId], references: [id])
+  Playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
   viewsCount BigInt   @map("views_count")
   itemsCount Int      @map("items_count")
 
@@ -99,9 +99,9 @@ enum PlaylistVisibility {
 
 model PlaylistItem {
   playlistId String   @map("playlist_id") @db.Uuid
-  Playlist   Playlist @relation(fields: [playlistId], references: [id])
+  Playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
   videoId    String   @map("video_id") @db.Uuid
-  Video      Video    @relation(fields: [videoId], references: [id])
+  Video      Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@id([playlistId, videoId])
@@ -110,7 +110,7 @@ model PlaylistItem {
 
 model LikedPlaylist {
   creatorId          String              @id @map("creator_id") @db.Uuid
-  Creator            Creator             @relation(fields: [creatorId], references: [id])
+  Creator            Creator             @relation(fields: [creatorId], references: [id], onDelete: Cascade)
   itemsCount         Int                 @map("items_count")
   LikedPlaylistItems LikedPlaylistItem[]
 
@@ -119,7 +119,7 @@ model LikedPlaylist {
 
 model LikedPlaylistItem {
   likedPlaylistId String        @map("liked_playlist_id") @db.Uuid
-  LikedPlaylist   LikedPlaylist @relation(fields: [likedPlaylistId], references: [creatorId])
+  LikedPlaylist   LikedPlaylist @relation(fields: [likedPlaylistId], references: [creatorId], onDelete: Cascade)
   videoId         String        @map("video_id") @db.Uuid
   Video           Video         @relation(fields: [videoId], references: [id])
 
@@ -129,7 +129,7 @@ model LikedPlaylistItem {
 
 model DislikedPlaylist {
   creatorId             String                 @id @map("creator_id") @db.Uuid
-  Creator               Creator                @relation(fields: [creatorId], references: [id])
+  Creator               Creator                @relation(fields: [creatorId], references: [id], onDelete: Cascade)
   itemsCount            Int                    @map("items_count")
   DislikedPlaylistItems DislikedPlaylistItem[]
 
@@ -138,7 +138,7 @@ model DislikedPlaylist {
 
 model DislikedPlaylistItem {
   dislikedPlaylistId String           @map("disliked_playlist_id") @db.Uuid
-  DislikedPlaylist   DislikedPlaylist @relation(fields: [dislikedPlaylistId], references: [creatorId])
+  DislikedPlaylist   DislikedPlaylist @relation(fields: [dislikedPlaylistId], references: [creatorId], onDelete: Cascade)
   videoId            String           @map("video_id") @db.Uuid
   Video              Video            @relation(fields: [videoId], references: [id])
 
@@ -148,7 +148,7 @@ model DislikedPlaylistItem {
 
 model WatchLaterPlaylist {
   creatorId               String                   @id @map("creator_id") @db.Uuid
-  Creator                 Creator                  @relation(fields: [creatorId], references: [id])
+  Creator                 Creator                  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
   itemsCount              Int                      @map("items_count")
   WatchLaterPlaylistItems WatchLaterPlaylistItem[]
 
@@ -157,9 +157,9 @@ model WatchLaterPlaylist {
 
 model WatchLaterPlaylistItem {
   watchLaterPlaylistId String             @map("watch_later_playlist_id") @db.Uuid
-  WatchLaterPlaylist   WatchLaterPlaylist @relation(fields: [watchLaterPlaylistId], references: [creatorId])
+  WatchLaterPlaylist   WatchLaterPlaylist @relation(fields: [watchLaterPlaylistId], references: [creatorId], onDelete: Cascade)
   videoId              String             @map("video_id") @db.Uuid
-  Video                Video              @relation(fields: [videoId], references: [id])
+  Video                Video              @relation(fields: [videoId], references: [id], onDelete: Cascade)
 
   @@id([watchLaterPlaylistId, videoId])
   @@map("watch_later_playlists_items")

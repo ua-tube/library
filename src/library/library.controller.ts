@@ -10,9 +10,9 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { LibraryService } from '../library.service';
-import { AuthUserGuard } from '../../common/guards';
-import { UserId } from '../../common/decorators';
+import { LibraryService } from './library.service';
+import { AuthUserGuard } from '../common/guards';
+import { UserId } from '../common/decorators';
 import {
   AddToPlaylistDto,
   CreatePlaylistDto,
@@ -20,7 +20,7 @@ import {
   PaginationDto,
   RemoveFromPlaylistDto,
   UpdatePlaylistDto,
-} from '../dto';
+} from './dto';
 
 @UseGuards(AuthUserGuard)
 @Controller('library')
