@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["omitApi"]
 }
 
 datasource db {
@@ -37,6 +38,9 @@ model Video {
   LikedPlaylistItems      LikedPlaylistItem[]
   DislikedPlaylistItems   DislikedPlaylistItem[]
 
+  @@index([creatorId])
+  @@index([visibility])
+  @@index([creatorId, visibility])
   @@map("videos")
 }
 
@@ -58,10 +62,16 @@ enum VideoVisibility {
 }
 
 model VideoMetrics {
-  videoId    String @id @default(uuid()) @map("video_id") @db.Uuid
-  Video      Video  @relation(fields: [videoId], references: [id], onDelete: Cascade)
-  viewsCount BigInt @default(0) @map("views_count")
+  videoId             String    @id @default(uuid()) @map("video_id") @db.Uuid
+  Video               Video     @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  viewsCount          BigInt    @default(0) @map("views_count")
+  likesCount          BigInt    @default(0) @map("likes_count")
+  dislikesCount       BigInt    @default(0) @map("dislikes_count")
+  viewsCountUpdatedAt DateTime? @map("views_count_updated_at") @db.Timestamptz(6)
 
+  @@index([viewsCount])
+  @@index([likesCount])
+  @@index([dislikesCount])
   @@map("video_metrics")
 }
 
@@ -77,6 +87,8 @@ model Playlist {
   PlaylistItems   PlaylistItem[]
   PlaylistMetrics PlaylistMetrics?
 
+  @@index([creatorId])
+  @@index([creatorId, visibility])
   @@map("playlists")
 }
 

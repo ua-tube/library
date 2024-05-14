@@ -1,15 +1,10 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { isEmpty } from 'class-validator';
 
 @Injectable()
-export class AuthUserGuard implements CanActivate {
+export class OptionalAuthUserGuard implements CanActivate {
   constructor(private readonly configService: ConfigService) {}
 
   public async canActivate(ctx: ExecutionContext): Promise<boolean> | never {
@@ -17,15 +12,15 @@ export class AuthUserGuard implements CanActivate {
 
     const authorizationHeader = req.headers['authorization'] || '';
     if (isEmpty(authorizationHeader)) {
-      throw new UnauthorizedException();
+      return true;
     }
 
     const split = authorizationHeader.split(' ');
     if (split.length < 2) {
-      throw new UnauthorizedException();
+      return true;
     }
 
-    if (isEmpty(split[1])) throw new UnauthorizedException();
+    if (isEmpty(split[1])) return true;
 
     try {
       const { data } = await axios.get(
@@ -41,7 +36,7 @@ export class AuthUserGuard implements CanActivate {
 
       return true;
     } catch {
-      throw new UnauthorizedException();
+      return true;
     }
   }
 }

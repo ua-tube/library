@@ -1,6 +1,6 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma';
-import { UpsertVideo } from './types';
+import { UnregisterVideo, UpsertVideo } from './types';
 
 @Injectable()
 export class VideoManagerService {
@@ -49,28 +49,17 @@ export class VideoManagerService {
     }
   }
 
-  async updateVideoMetrics(videoId: string, numberToIncrement: number) {
+  async unregisterVideo(payload: UnregisterVideo) {
     const video = await this.prisma.video.findUnique({
-      where: { id: videoId },
-      select: { id: true },
+      where: { id: payload.videoId },
+      select: { status: true },
     });
 
-    if (!video) {
-      throw new BadRequestException(
-        `Video with id (${videoId}) does not exists`,
-      );
-    }
+    if (!video || video.status === 'Unregistered') return;
 
-    try {
-      const updated = await this.prisma.videoMetrics.update({
-        where: { videoId },
-        data: { viewsCount: { increment: numberToIncrement } },
-      });
-      this.logger.log(`Metrics for video with id (${videoId}) updated`);
-      return (updated.viewsCount = `${updated.viewsCount}` as any);
-    } catch (e: any) {
-      this.logger.error(e);
-      throw new BadRequestException(e?.code || 0);
-    }
+    await this.prisma.video.update({
+      where: { id: payload.videoId },
+      data: { status: 'Unregistered' },
+    });
   }
 }

@@ -7,6 +7,8 @@ import { CreatorsModule } from './creators/creators.module';
 import { LibraryModule } from './library/library.module';
 import { VideoManagerModule } from './video-manager/video-manager.module';
 import { HealthModule } from './health/health.module';
+import { VideoStoreModule } from './video-store/video-store.module';
+import { HistoryModule } from './history/history.module';
 
 @Module({
   imports: [
@@ -30,6 +32,8 @@ import { HealthModule } from './health/health.module';
     LibraryModule,
     VideoManagerModule,
     HealthModule,
+    VideoStoreModule,
+    HistoryModule,
   ],
   providers: [
     {

@@ -1,7 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { VideoManagerService } from './video-manager.service';
-import { EventPattern, MessagePattern, Payload } from '@nestjs/microservices';
-import { UpdateMetrics, UpsertVideo } from './types';
+import { EventPattern, Payload } from '@nestjs/microservices';
+import { UnregisterVideo, UpsertVideo } from './types';
 
 @Controller()
 export class VideoManagerController {
@@ -12,11 +12,8 @@ export class VideoManagerController {
     await this.videoManagerService.upsertVideo(payload);
   }
 
-  @MessagePattern('update_metrics')
-  async handleUpdateMetrics(@Payload() payload: UpdateMetrics) {
-    return this.videoManagerService.updateVideoMetrics(
-      payload.videoId,
-      payload.numberToIncrement,
-    );
+  @EventPattern('unregister_video')
+  async handleUnregisterVideo(@Payload() payload: UnregisterVideo) {
+    await this.videoManagerService.unregisterVideo(payload);
   }
 }

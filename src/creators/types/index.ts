@@ -1,1 +1,6 @@
-export * from './upsert-creator.type';
+export type UpsertCreator = {
+  id: string;
+  displayName: string;
+  nickname: string;
+  thumbnailUrl?: string;
+};

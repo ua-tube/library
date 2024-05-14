@@ -1,7 +1,12 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma';
-import { CreatePlaylistDto, PaginationDto, UpdatePlaylistDto } from './dto';
-import { buildPlaylistQueryBody, paginate } from './helpers';
+import {
+  CreatePlaylistDto,
+  PaginationDto,
+  SortVideosDto,
+  UpdatePlaylistDto,
+} from './dto';
+import { buildPlaylistQueryBody, paginate } from './utils';
 import { isUUID } from 'class-validator';
 import axios from 'axios';
 import { ConfigService } from '@nestjs/config';
@@ -33,6 +38,9 @@ export class LibraryService {
   }
 
   async updatePlaylist(playlistId: string, dto: UpdatePlaylistDto) {
+    if (!dto.title && !dto.description && !dto.visibility)
+      throw new BadRequestException('Invalid payload');
+
     const playlist = await this.prisma.playlist.findUnique({
       where: { id: playlistId },
       select: { id: true },
@@ -127,28 +135,87 @@ export class LibraryService {
     });
   }
 
-  async addToLikedPlaylist(creatorId: string, videoId: string) {
-    await this.prisma.$transaction(async (tx) => {
-      await tx.likedPlaylistItem.create({
-        data: { likedPlaylistId: creatorId, videoId },
-      });
-      await tx.likedPlaylist.update({
-        where: { creatorId },
-        data: { itemsCount: { increment: 1 } },
-      });
+  async voteVideo(creatorId: string, videoId: string, voteType: string) {
+    const video = await this.prisma.video.findUnique({
+      where: { id: videoId },
+      select: {
+        LikedPlaylistItems: { where: { likedPlaylistId: creatorId } },
+        DislikedPlaylistItems: { where: { dislikedPlaylistId: creatorId } },
+      },
     });
+
+    if (!video) throw new BadRequestException('Video not found');
+
+    const likedExists = video.LikedPlaylistItems.some(
+      (x) => x.videoId === videoId,
+    );
+    const dislikedExists = video.DislikedPlaylistItems.some(
+      (x) => x.videoId === videoId,
+    );
+
+    switch (voteType) {
+      case 'None':
+        if (!likedExists && !dislikedExists)
+          throw new BadRequestException('Video does not have votes yet');
+        likedExists
+          ? await this.removeFromLikedPlaylist(creatorId, videoId)
+          : await this.removeFromDislikedPlaylist(creatorId, videoId);
+        break;
+      case 'Like':
+        if (likedExists) throw new BadRequestException('Already liked');
+        await this.addToLikedPlaylist(creatorId, videoId, dislikedExists);
+        break;
+      case 'Dislike':
+        if (dislikedExists) throw new BadRequestException('Already disliked');
+        await this.addToDislikedPlaylist(creatorId, videoId, likedExists);
+        break;
+    }
   }
 
-  async addToDislikedPlaylist(creatorId: string, videoId: string) {
-    await this.prisma.$transaction(async (tx) => {
-      await tx.dislikedPlaylistItem.create({
-        data: { dislikedPlaylistId: creatorId, videoId },
-      });
-      await tx.dislikedPlaylist.update({
+  async addToLikedPlaylist(
+    creatorId: string,
+    videoId: string,
+    disliked: boolean,
+  ) {
+    await this.prisma.$transaction([
+      this.prisma.likedPlaylistItem.create({
+        data: { likedPlaylistId: creatorId, videoId },
+      }),
+      this.prisma.likedPlaylist.update({
         where: { creatorId },
         data: { itemsCount: { increment: 1 } },
-      });
-    });
+      }),
+      this.prisma.videoMetrics.update({
+        where: { videoId },
+        data: {
+          likesCount: { increment: 1 },
+          ...(disliked && { dislikesCount: { decrement: 1 } }),
+        },
+      }),
+    ]);
+  }
+
+  async addToDislikedPlaylist(
+    creatorId: string,
+    videoId: string,
+    liked: boolean,
+  ) {
+    await this.prisma.$transaction([
+      this.prisma.dislikedPlaylistItem.create({
+        data: { dislikedPlaylistId: creatorId, videoId },
+      }),
+      this.prisma.dislikedPlaylist.update({
+        where: { creatorId },
+        data: { itemsCount: { increment: 1 } },
+      }),
+      this.prisma.videoMetrics.update({
+        where: { videoId },
+        data: {
+          dislikesCount: { increment: 1 },
+          ...(liked && { likesCount: { decrement: 1 } }),
+        },
+      }),
+    ]);
   }
 
   async addToWatchLaterPlaylist(creatorId: string, videoId: string) {
@@ -176,37 +243,45 @@ export class LibraryService {
   }
 
   async removeFromLikedPlaylist(creatorId: string, videoId: string) {
-    await this.prisma.$transaction(async (tx) => {
-      await tx.likedPlaylistItem.delete({
+    await this.prisma.$transaction([
+      this.prisma.likedPlaylistItem.delete({
         where: {
           likedPlaylistId_videoId: {
             likedPlaylistId: creatorId,
             videoId,
           },
         },
-      });
-      await tx.likedPlaylist.update({
+      }),
+      this.prisma.likedPlaylist.update({
         where: { creatorId },
         data: { itemsCount: { decrement: 1 } },
-      });
-    });
+      }),
+      this.prisma.videoMetrics.update({
+        where: { videoId },
+        data: { likesCount: { decrement: 1 } },
+      }),
+    ]);
   }
 
   async removeFromDislikedPlaylist(creatorId: string, videoId: string) {
-    await this.prisma.$transaction(async (tx) => {
-      await tx.dislikedPlaylistItem.delete({
+    await this.prisma.$transaction([
+      this.prisma.dislikedPlaylistItem.delete({
         where: {
           dislikedPlaylistId_videoId: {
             dislikedPlaylistId: creatorId,
             videoId,
           },
         },
-      });
-      await tx.dislikedPlaylist.update({
+      }),
+      this.prisma.dislikedPlaylist.update({
         where: { creatorId },
         data: { itemsCount: { decrement: 1 } },
-      });
-    });
+      }),
+      this.prisma.videoMetrics.update({
+        where: { videoId },
+        data: { dislikesCount: { decrement: 1 } },
+      }),
+    ]);
   }
 
   async removeFromWatchLaterPlaylist(creatorId: string, videoId: string) {
@@ -239,6 +314,105 @@ export class LibraryService {
         where: { playlistId },
         data: { itemsCount: { decrement: 1 } },
       });
+    });
+  }
+
+  async getVideoMetadata(videoId: string, creatorId?: string) {
+    const video = await this.prisma.video.findUnique({
+      where: { id: videoId },
+      select: {
+        VideoMetrics: { omit: { videoId: true } },
+      },
+    });
+
+    if (!video) return null;
+
+    if (creatorId) {
+      const [isLiked, isDisliked] = await this.prisma.$transaction([
+        this.prisma.likedPlaylistItem.findUnique({
+          where: {
+            likedPlaylistId_videoId: {
+              likedPlaylistId: creatorId,
+              videoId,
+            },
+          },
+        }),
+        this.prisma.dislikedPlaylistItem.findUnique({
+          where: {
+            dislikedPlaylistId_videoId: {
+              dislikedPlaylistId: creatorId,
+              videoId,
+            },
+          },
+        }),
+      ]);
+
+      return {
+        ...video.VideoMetrics,
+        userVote: isLiked ? 'Like' : isDisliked ? 'Dislike' : 'None',
+      };
+    } else {
+      return video.VideoMetrics;
+    }
+  }
+
+  async getVideo(videoId: string) {
+    const video = await this.prisma.video.findUnique({
+      where: { id: videoId },
+      include: {
+        VideoMetrics: true,
+        Creator: true,
+      },
+    });
+
+    if (!video || video.visibility !== 'Public') {
+      return null;
+    }
+
+    return video;
+  }
+
+  async getVideosCount(creatorId: string) {
+    return this.prisma.video.count({
+      where: { creatorId, visibility: 'Public' },
+    });
+  }
+
+  async getVideosTotalViews(creatorId: string) {
+    const videosMetrics = await this.prisma.videoMetrics.findMany({
+      where: { Video: { creatorId } },
+      select: { viewsCount: true },
+    });
+
+    return videosMetrics
+      .reduce(
+        (accumulator, currentValue) => accumulator + currentValue.viewsCount,
+        BigInt(0),
+      )
+      .toString();
+  }
+
+  async getVideos(
+    creatorId: string,
+    pagination: PaginationDto,
+    sort: SortVideosDto,
+  ) {
+    const sortBy = sort?.sortBy ? sort.sortBy : 'createdAt';
+    const sortOrder = sort?.sortOrder ? sort.sortOrder : 'desc';
+
+    return this.prisma.video.findMany({
+      where: { creatorId, visibility: 'Public' },
+      omit: { creatorId: true, status: true },
+      include: {
+        VideoMetrics: { omit: { videoId: true } },
+        Creator: true,
+      },
+      orderBy:
+        sortBy !== 'createdAt'
+          ? { VideoMetrics: { [sortBy]: sortOrder } }
+          : { [sortBy]: sortOrder },
+      take: pagination.perPage,
+      skip: (pagination.page - 1) * pagination.perPage,
     });
   }
 
