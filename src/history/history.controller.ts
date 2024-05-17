@@ -1,7 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { HistoryService } from './history.service';
 import { EventPattern, Payload } from '@nestjs/microservices';
-import { VideoViewsMetricsSyncPayload } from './types';
+import { VideoViewsMetricsSyncDto } from './dto';
 
 @Controller()
 export class HistoryController {
@@ -9,7 +9,7 @@ export class HistoryController {
 
   @EventPattern('video_views_metrics_sync')
   async handleVideoViewsMetricsSync(
-    @Payload() payload: VideoViewsMetricsSyncPayload,
+    @Payload() payload: VideoViewsMetricsSyncDto,
   ) {
     await this.historyService.syncVideoViewsMetrics(payload);
   }
