@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma';
-import { UnregisterVideo, UpsertVideo } from './types';
+import { UnregisterVideoDto, UpsertVideoDto } from './dto';
 
 @Injectable()
 export class VideoManagerService {
@@ -8,7 +8,7 @@ export class VideoManagerService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async upsertVideo(payload: UpsertVideo) {
+  async upsertVideo(payload: UpsertVideoDto) {
     const video = await this.prisma.video.findUnique({
       where: { id: payload.id },
       select: { id: true },
@@ -49,7 +49,7 @@ export class VideoManagerService {
     }
   }
 
-  async unregisterVideo(payload: UnregisterVideo) {
+  async unregisterVideo(payload: UnregisterVideoDto) {
     const video = await this.prisma.video.findUnique({
       where: { id: payload.videoId },
       select: { status: true },

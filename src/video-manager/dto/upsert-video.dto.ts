@@ -1,6 +1,6 @@
 import { VideoStatus, VideoVisibility } from '@prisma/client';
 
-export type UpsertVideo = {
+export class UpsertVideoDto {
   id: string;
   creatorId: string;
   title: string;
@@ -9,6 +9,4 @@ export type UpsertVideo = {
   visibility: VideoVisibility;
   status: VideoStatus;
   createdAt: Date;
-};
-
-export type UnregisterVideo = { videoId: string };
+}
