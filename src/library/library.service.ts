@@ -8,21 +8,14 @@ import {
 } from './dto';
 import { buildPlaylistQueryBody, paginate } from './utils';
 import { isUUID } from 'class-validator';
-import axios from 'axios';
-import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class LibraryService {
   private readonly logger = new Logger(LibraryService.name);
 
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly configService: ConfigService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async createPlaylist(dto: CreatePlaylistDto, creatorId: string) {
-    await this.checkCreatorSync(creatorId);
-
     return this.prisma.playlist.create({
       data: {
         creatorId,
@@ -59,7 +52,8 @@ export class LibraryService {
       return await this.prisma.playlist.delete({
         where: { id: playlistId },
       });
-    } catch {
+    } catch (e) {
+      this.logger.error(e);
       throw new BadRequestException('Playlist not found');
     }
   }
@@ -414,37 +408,5 @@ export class LibraryService {
       take: pagination.perPage,
       skip: (pagination.page - 1) * pagination.perPage,
     });
-  }
-
-  private async checkCreatorSync(id: string) {
-    const creator = await this.prisma.creator.findUnique({
-      where: { id },
-      select: { id: true },
-    });
-
-    if (!creator) {
-      try {
-        const { data } = await axios.get(
-          this.configService.get('USERS_SVC_URL'),
-          {
-            params: {
-              userId: id,
-            },
-          },
-        );
-        await this.prisma.creator.create({
-          data: {
-            id,
-            displayName: data.displayName,
-            nickname: data.nickname,
-            thumbnailUrl: data.thumbnailUrl,
-          },
-        });
-        this.logger.log(`Creator (${id}) created`);
-      } catch (e) {
-        this.logger.error(e);
-        throw new BadRequestException('Users service temporary unavailable');
-      }
-    }
   }
 }

@@ -7,7 +7,6 @@ import { CreatorsModule } from './creators/creators.module';
 import { LibraryModule } from './library/library.module';
 import { VideoManagerModule } from './video-manager/video-manager.module';
 import { HealthModule } from './health/health.module';
-import { VideoStoreModule } from './video-store/video-store.module';
 import { HistoryModule } from './history/history.module';
 
 @Module({
@@ -21,7 +20,6 @@ import { HistoryModule } from './history/history.module';
         HTTP_HOST: Joi.string().required(),
         HTTP_PORT: Joi.number().required(),
         AUTH_SVC_URL: Joi.string().required(),
-        USERS_SVC_URL: Joi.string().required(),
         REDIS_URL: Joi.string().required(),
         DATABASE_URL: Joi.string().required(),
         RABBITMQ_URL: Joi.string().required(),
@@ -32,7 +30,6 @@ import { HistoryModule } from './history/history.module';
     LibraryModule,
     VideoManagerModule,
     HealthModule,
-    VideoStoreModule,
     HistoryModule,
   ],
   providers: [
