@@ -35,9 +35,9 @@ export class CreatorsService {
         await this.prisma.creator.create({
           data: {
             ...payload,
-            LikedPlaylist: { create: { itemsCount: 0 } },
-            DislikedPlaylist: { create: { itemsCount: 0 } },
-            WatchLaterPlaylist: { create: { itemsCount: 0 } },
+            likedPlaylist: { create: { itemsCount: 0 } },
+            dislikedPlaylist: { create: { itemsCount: 0 } },
+            watchLaterPlaylist: { create: { itemsCount: 0 } },
           },
         });
         this.logger.log(`Creator (${payload.id}) is created`);

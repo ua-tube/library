@@ -1,11 +1,10 @@
 import { VideoStatus, VideoVisibility } from '@prisma/client';
 
-export class UpsertVideoDto {
+export class CreateVideoDto {
   id: string;
-  creatorId: string;
   title: string;
-  thumbnailUrl?: string;
-  previewThumbnailUrl?: string;
+  creatorId: string;
+  lengthSeconds: number;
   visibility: VideoVisibility;
   status: VideoStatus;
   createdAt: Date;

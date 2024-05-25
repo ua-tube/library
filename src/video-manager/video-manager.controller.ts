@@ -1,19 +1,37 @@
 import { Controller } from '@nestjs/common';
 import { VideoManagerService } from './video-manager.service';
-import { EventPattern, Payload } from '@nestjs/microservices';
-import { UnregisterVideoDto, UpsertVideoDto } from './dto';
+import { Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices';
+import { CreateVideoDto, UnregisterVideoDto, UpdateVideoDto } from './dto';
+import { ackMessage } from '../common/utils';
 
 @Controller()
 export class VideoManagerController {
   constructor(private readonly videoManagerService: VideoManagerService) {}
 
-  @EventPattern('upsert_video')
-  async handleUpsertVideo(@Payload() payload: UpsertVideoDto) {
-    await this.videoManagerService.upsertVideo(payload);
+  @EventPattern('create_video')
+  async handleCreateVideo(
+    @Payload() payload: CreateVideoDto,
+    @Ctx() context: RmqContext,
+  ) {
+    await this.videoManagerService.createVideo(payload);
+    ackMessage(context);
+  }
+
+  @EventPattern('update_video')
+  async handleUpdateVideo(
+    @Payload() payload: UpdateVideoDto,
+    @Ctx() context: RmqContext,
+  ) {
+    await this.videoManagerService.updateVideo(payload);
+    ackMessage(context);
   }
 
   @EventPattern('unregister_video')
-  async handleUnregisterVideo(@Payload() payload: UnregisterVideoDto) {
+  async handleUnregisterVideo(
+    @Payload() payload: UnregisterVideoDto,
+    @Ctx() context: RmqContext,
+  ) {
     await this.videoManagerService.unregisterVideo(payload);
+    ackMessage(context);
   }
 }

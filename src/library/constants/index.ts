@@ -1,15 +1,16 @@
 export const playlistVideoQuerySelector = {
-  Video: {
+  video: {
     select: {
       id: true,
       Creator: true,
       title: true,
       thumbnailUrl: true,
       previewThumbnailUrl: true,
+      lengthSeconds: true,
       status: true,
       visibility: true,
       createdAt: true,
-      VideoMetrics: { select: { viewsCount: true } },
+      metrics: { select: { viewsCount: true } },
     },
   },
 };

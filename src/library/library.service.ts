@@ -20,7 +20,7 @@ export class LibraryService {
       data: {
         creatorId,
         ...dto,
-        PlaylistMetrics: {
+        playlistMetrics: {
           create: {
             itemsCount: 0,
             viewsCount: 0,
@@ -61,11 +61,11 @@ export class LibraryService {
   async getLikedPlaylist(creatorId: string, pagination: PaginationDto) {
     const result = await this.prisma.likedPlaylist.findUnique({
       where: { creatorId },
-      include: { LikedPlaylistItems: buildPlaylistQueryBody(pagination) },
+      include: { likedPlaylistItems: buildPlaylistQueryBody(pagination) },
     });
 
     return paginate({
-      data: result?.LikedPlaylistItems || [],
+      data: result?.likedPlaylistItems || [],
       count: result?.itemsCount || 0,
       ...pagination,
     });
@@ -74,11 +74,11 @@ export class LibraryService {
   async getDislikedPlaylist(creatorId: string, pagination: PaginationDto) {
     const result = await this.prisma.dislikedPlaylist.findUnique({
       where: { creatorId },
-      include: { DislikedPlaylistItems: buildPlaylistQueryBody(pagination) },
+      include: { dislikedPlaylistItems: buildPlaylistQueryBody(pagination) },
     });
 
     return paginate({
-      data: result?.DislikedPlaylistItems || [],
+      data: result?.dislikedPlaylistItems || [],
       count: result?.itemsCount || 0,
       ...pagination,
     });
@@ -87,11 +87,11 @@ export class LibraryService {
   async getWatchLaterPlaylist(creatorId: string, pagination: PaginationDto) {
     const result = await this.prisma.watchLaterPlaylist.findUnique({
       where: { creatorId },
-      include: { WatchLaterPlaylistItems: buildPlaylistQueryBody(pagination) },
+      include: { watchLaterPlaylistItems: buildPlaylistQueryBody(pagination) },
     });
 
     return paginate({
-      data: result?.WatchLaterPlaylistItems || [],
+      data: result?.watchLaterPlaylistItems || [],
       count: result?.itemsCount || 0,
       ...pagination,
     });
@@ -111,20 +111,20 @@ export class LibraryService {
         visibility: true,
         createdAt: true,
         updatedAt: true,
-        Creator: true,
-        PlaylistItems: buildPlaylistQueryBody(pagination),
-        PlaylistMetrics: true,
+        creator: true,
+        playlistItems: buildPlaylistQueryBody(pagination),
+        playlistMetrics: true,
       },
     });
 
     return paginate({
       data:
-        result?.PlaylistItems?.map(
+        result?.playlistItems?.map(
           (x) =>
-            (x.Video.VideoMetrics.viewsCount =
-              `${x.Video.VideoMetrics.viewsCount}` as any),
+            (x.video.metrics.viewsCount =
+              `${x.video.metrics.viewsCount}` as any),
         ) || [],
-      count: result?.PlaylistMetrics.itemsCount || 0,
+      count: result?.playlistMetrics.itemsCount || 0,
       ...pagination,
     });
   }
@@ -133,17 +133,17 @@ export class LibraryService {
     const video = await this.prisma.video.findUnique({
       where: { id: videoId },
       select: {
-        LikedPlaylistItems: { where: { likedPlaylistId: creatorId } },
-        DislikedPlaylistItems: { where: { dislikedPlaylistId: creatorId } },
+        likedPlaylistItems: { where: { likedPlaylistId: creatorId } },
+        dislikedPlaylistItems: { where: { dislikedPlaylistId: creatorId } },
       },
     });
 
     if (!video) throw new BadRequestException('Video not found');
 
-    const likedExists = video.LikedPlaylistItems.some(
+    const likedExists = video.likedPlaylistItems.some(
       (x) => x.videoId === videoId,
     );
-    const dislikedExists = video.DislikedPlaylistItems.some(
+    const dislikedExists = video.dislikedPlaylistItems.some(
       (x) => x.videoId === videoId,
     );
 
@@ -315,7 +315,7 @@ export class LibraryService {
     const video = await this.prisma.video.findUnique({
       where: { id: videoId },
       select: {
-        VideoMetrics: { omit: { videoId: true } },
+        metrics: { omit: { videoId: true } },
       },
     });
 
@@ -342,11 +342,11 @@ export class LibraryService {
       ]);
 
       return {
-        ...video.VideoMetrics,
+        ...video.metrics,
         userVote: isLiked ? 'Like' : isDisliked ? 'Dislike' : 'None',
       };
     } else {
-      return video.VideoMetrics;
+      return video.metrics;
     }
   }
 
@@ -354,8 +354,8 @@ export class LibraryService {
     const video = await this.prisma.video.findUnique({
       where: { id: videoId },
       include: {
-        VideoMetrics: true,
-        Creator: true,
+        metrics: true,
+        creator: true,
       },
     });
 
@@ -374,7 +374,7 @@ export class LibraryService {
 
   async getVideosTotalViews(creatorId: string) {
     const videosMetrics = await this.prisma.videoMetrics.findMany({
-      where: { Video: { creatorId } },
+      where: { video: { creatorId } },
       select: { viewsCount: true },
     });
 
@@ -398,12 +398,12 @@ export class LibraryService {
       where: { creatorId, visibility: 'Public' },
       omit: { creatorId: true, status: true },
       include: {
-        VideoMetrics: { omit: { videoId: true } },
-        Creator: true,
+        metrics: { omit: { videoId: true } },
+        creator: true,
       },
       orderBy:
         sortBy !== 'createdAt'
-          ? { VideoMetrics: { [sortBy]: sortOrder } }
+          ? { metrics: { [sortBy]: sortOrder } }
           : { [sortBy]: sortOrder },
       take: pagination.perPage,
       skip: (pagination.page - 1) * pagination.perPage,

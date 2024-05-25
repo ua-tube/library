@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma';
-import { UnregisterVideoDto, UpsertVideoDto } from './dto';
+import { CreateVideoDto, UnregisterVideoDto, UpdateVideoDto } from './dto';
 
 @Injectable()
 export class VideoManagerService {
@@ -8,44 +8,65 @@ export class VideoManagerService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async upsertVideo(payload: UpsertVideoDto) {
+  async createVideo(payload: CreateVideoDto) {
     const video = await this.prisma.video.findUnique({
       where: { id: payload.id },
       select: { id: true },
     });
 
     if (video) {
-      try {
-        await this.prisma.video.update({
-          where: { id: payload.id },
-          data: {
-            title: payload.title,
-            thumbnailUrl: payload.thumbnailUrl,
-            previewThumbnailUrl: payload.previewThumbnailUrl,
-            visibility: payload.visibility,
-            status: payload.status,
-          },
-        });
-        this.logger.log(`Video (${payload.id}) is updated`);
-      } catch {
-        this.logger.error(
-          `An error occurred when updating video (${payload.id})`,
-        );
-      }
-    } else {
-      try {
-        await this.prisma.video.create({
-          data: {
-            ...payload,
-            VideoMetrics: { create: { viewsCount: 0 } },
-          },
-        });
-        this.logger.log(`Video (${payload.id}) is created`);
-      } catch {
-        this.logger.error(
-          `An error occurred when creating video (${payload.id})`,
-        );
-      }
+      this.logger.warn(`Video (${payload.id}) already created`);
+      return;
+    }
+
+    try {
+      await this.prisma.video.create({
+        data: {
+          id: payload.id,
+          title: payload.title,
+          creatorId: payload.creatorId,
+          visibility: payload.visibility,
+          lengthSeconds: payload.lengthSeconds,
+          status: payload.status,
+          createdAt: payload.createdAt,
+          metrics: { create: { viewsCount: 0 } },
+        },
+      });
+      this.logger.log(`Video (${payload.id}) is created`);
+    } catch {
+      this.logger.error(
+        `An error occurred when creating video (${payload.id})`,
+      );
+    }
+  }
+
+  async updateVideo(payload: UpdateVideoDto) {
+    const video = await this.prisma.video.findUnique({
+      where: { id: payload.id },
+      select: { id: true },
+    });
+
+    if (!video) {
+      this.logger.warn(`Video (${payload.id}) does not exists`);
+      return;
+    }
+
+    try {
+      await this.prisma.video.update({
+        where: { id: payload.id },
+        data: {
+          title: payload.title,
+          thumbnailUrl: payload.thumbnailUrl,
+          previewThumbnailUrl: payload.previewThumbnailUrl,
+          visibility: payload.visibility,
+          status: payload.status,
+        },
+      });
+      this.logger.log(`Video (${payload.id}) is updated`);
+    } catch {
+      this.logger.error(
+        `An error occurred when updating video (${payload.id})`,
+      );
     }
   }
 
