@@ -16,9 +16,9 @@ import { HistoryModule } from './history/history.module';
       isGlobal: true,
       validationSchema: Joi.object({
         NODE_ENV: Joi.valid('development', 'production', 'test').required(),
-        CLIENT_URL: Joi.string().required(),
         HTTP_HOST: Joi.string().required(),
         HTTP_PORT: Joi.number().required(),
+        CLIENT_URL: Joi.string().required(),
         AUTH_SVC_URL: Joi.string().required(),
         REDIS_URL: Joi.string().required(),
         DATABASE_URL: Joi.string().required(),
