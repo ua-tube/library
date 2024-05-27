@@ -23,11 +23,11 @@ export class VideoManagerService {
       await this.prisma.video.create({
         data: {
           id: payload.id,
-          title: payload.title,
           creatorId: payload.creatorId,
-          visibility: payload.visibility,
-          lengthSeconds: payload.lengthSeconds,
+          title: payload.title,
           status: payload.status,
+          lengthSeconds: payload.lengthSeconds,
+          visibility: payload.visibility,
           createdAt: payload.createdAt,
           metrics: {
             create: {
@@ -39,7 +39,7 @@ export class VideoManagerService {
         },
       });
       this.logger.log(`[Create] Video (${payload.id}) is created`);
-    } catch {
+    } catch (e) {
       this.logger.error(
         `[Create] An error occurred when creating video (${payload.id})`,
       );
