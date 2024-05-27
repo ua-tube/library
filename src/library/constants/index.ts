@@ -2,7 +2,7 @@ export const playlistVideoQuerySelector = {
   video: {
     select: {
       id: true,
-      Creator: true,
+      creator: true,
       title: true,
       thumbnailUrl: true,
       previewThumbnailUrl: true,

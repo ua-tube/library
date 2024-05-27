@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma';
 import {
   CreatePlaylistDto,
@@ -30,16 +35,42 @@ export class LibraryService {
     });
   }
 
-  async updatePlaylist(playlistId: string, dto: UpdatePlaylistDto) {
+  async getPlaylistsInfosBySelf(creatorId: string, pagination: PaginationDto) {
+    const [playlists, count] = await this.prisma.$transaction([
+      this.prisma.playlist.findMany({
+        where: { creatorId },
+        include: {
+          creator: true,
+          playlistMetrics: true,
+        },
+        take: pagination.perPage,
+        skip: (pagination.page - 1) * pagination.perPage,
+      }),
+      this.prisma.playlist.count({ where: { creatorId } }),
+    ]);
+
+    return paginate({
+      data: playlists || [],
+      count,
+      ...pagination,
+    });
+  }
+
+  async updatePlaylist(
+    playlistId: string,
+    dto: UpdatePlaylistDto,
+    creatorId: string,
+  ) {
     if (!dto.title && !dto.description && !dto.visibility)
       throw new BadRequestException('Invalid payload');
 
     const playlist = await this.prisma.playlist.findUnique({
       where: { id: playlistId },
-      select: { id: true },
+      select: { creatorId: true },
     });
 
     if (!playlist) throw new BadRequestException('Playlist is not found');
+    if (playlist.creatorId !== creatorId) throw new ForbiddenException();
 
     return this.prisma.playlist.update({
       where: { id: playlistId },
@@ -47,10 +78,10 @@ export class LibraryService {
     });
   }
 
-  async deletePlaylist(playlistId: string) {
+  async deletePlaylist(playlistId: string, creatorId: string) {
     try {
       return await this.prisma.playlist.delete({
-        where: { id: playlistId },
+        where: { id: playlistId, creatorId },
       });
     } catch (e) {
       this.logger.error(e);
@@ -224,7 +255,14 @@ export class LibraryService {
     });
   }
 
-  async addToPlaylist(playlistId: string, videoId: string) {
+  async addToPlaylist(creatorId: string, playlistId: string, videoId: string) {
+    const playlist = await this.prisma.playlist.findUnique({
+      where: { id: playlistId },
+      select: { creatorId: true },
+    });
+
+    if (playlist.creatorId !== creatorId) throw new ForbiddenException();
+
     await this.prisma.$transaction(async (tx) => {
       await tx.playlistItem.create({
         data: { playlistId, videoId },
@@ -295,10 +333,21 @@ export class LibraryService {
     });
   }
 
-  async removeFromPlaylist(playlistId: string, videoId: string) {
+  async removeFromPlaylist(
+    creatorId: string,
+    playlistId: string,
+    videoId: string,
+  ) {
     if (!isUUID(playlistId, 4)) {
       throw new BadRequestException('Specified playlist ID is not uuid v4');
     }
+
+    const playlist = await this.prisma.playlist.findUnique({
+      where: { id: playlistId },
+      select: { creatorId: true },
+    });
+
+    if (playlist.creatorId !== creatorId) throw new ForbiddenException();
 
     await this.prisma.$transaction(async (tx) => {
       await tx.playlistItem.delete({
@@ -319,7 +368,7 @@ export class LibraryService {
       },
     });
 
-    if (!video) return null;
+    if (!video) return {};
 
     if (creatorId) {
       const [isLiked, isDisliked] = await this.prisma.$transaction([
@@ -346,7 +395,9 @@ export class LibraryService {
         userVote: isLiked ? 'Like' : isDisliked ? 'Dislike' : 'None',
       };
     } else {
-      return video.metrics;
+      return {
+        ...video.metrics,
+      };
     }
   }
 

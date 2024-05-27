@@ -69,6 +69,7 @@ model VideoMetrics {
   likesCount          BigInt    @default(0) @map("likes_count")
   dislikesCount       BigInt    @default(0) @map("dislikes_count")
   viewsCountUpdatedAt DateTime? @map("views_count_updated_at") @db.Timestamptz(6)
+  nextSyncAt          DateTime? @map("votes_count_updated_at") @db.Timestamptz(6)
 
   @@index([viewsCount])
   @@index([likesCount])

@@ -24,18 +24,18 @@ import {
   VoteDto,
 } from './dto';
 
-@UseGuards(AuthUserGuard)
 @Controller('library')
 export class LibraryController {
   constructor(private readonly libraryService: LibraryService) {}
 
+  @UseGuards(AuthUserGuard)
   @Get('playlists')
   getPlaylist(
-    @Query() query: GetPlaylistDto,
+    @Query() { t }: GetPlaylistDto,
     @Query() pagination: PaginationDto,
     @UserId() userId: string,
   ) {
-    switch (query.t.toUpperCase()) {
+    switch (t.toUpperCase()) {
       case 'LL':
         return this.libraryService.getLikedPlaylist(userId, pagination);
       case 'DL':
@@ -44,27 +44,44 @@ export class LibraryController {
         return this.libraryService.getWatchLaterPlaylist(userId, pagination);
     }
 
-    return this.libraryService.getPlaylist(query.t, pagination);
+    return this.libraryService.getPlaylist(t, pagination);
   }
 
+  @UseGuards(AuthUserGuard)
   @Post('playlists')
   createPlaylist(@Body() dto: CreatePlaylistDto, @UserId() userId: string) {
     return this.libraryService.createPlaylist(dto, userId);
   }
 
+  @UseGuards(AuthUserGuard)
+  @Get('playlists/infos/self')
+  getPlaylistsInfosBySelf(
+    @Query() pagination: PaginationDto,
+    @UserId() userId: string,
+  ) {
+    return this.libraryService.getPlaylistsInfosBySelf(userId, pagination);
+  }
+
+  @UseGuards(AuthUserGuard)
   @Patch('playlists/:playlistId')
   updatePlaylist(
     @Param('playlistId', ParseUUIDPipe) playlistId: string,
     @Body() dto: UpdatePlaylistDto,
+    @UserId() userId: string,
   ) {
-    return this.libraryService.updatePlaylist(playlistId, dto);
+    return this.libraryService.updatePlaylist(playlistId, dto, userId);
   }
 
+  @UseGuards(AuthUserGuard)
   @Delete('playlists/:playlistId')
-  deletePlaylist(@Param('playlistId', ParseUUIDPipe) playlistId: string) {
-    return this.libraryService.deletePlaylist(playlistId);
+  deletePlaylist(
+    @Param('playlistId', ParseUUIDPipe) playlistId: string,
+    @UserId() userId: string,
+  ) {
+    return this.libraryService.deletePlaylist(playlistId, userId);
   }
 
+  @UseGuards(AuthUserGuard)
   @Post('playlists/add-item')
   addToPlaylist(@Body() dto: AddToPlaylistDto, @UserId() userId: string) {
     switch (dto.t.toUpperCase()) {
@@ -76,9 +93,10 @@ export class LibraryController {
         return this.libraryService.addToWatchLaterPlaylist(userId, dto.videoId);
     }
 
-    return this.libraryService.addToPlaylist(dto.t, dto.videoId);
+    return this.libraryService.addToPlaylist(userId, dto.t, dto.videoId);
   }
 
+  @UseGuards(AuthUserGuard)
   @Post('playlists/remove-item')
   removeFromPlaylist(
     @Body() dto: RemoveFromPlaylistDto,
@@ -95,7 +113,7 @@ export class LibraryController {
         );
     }
 
-    return this.libraryService.removeFromPlaylist(dto.t, dto.videoId);
+    return this.libraryService.removeFromPlaylist(userId, dto.t, dto.videoId);
   }
 
   @UseGuards(OptionalAuthUserGuard)
