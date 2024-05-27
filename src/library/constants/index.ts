@@ -10,7 +10,7 @@ export const playlistVideoQuerySelector = {
       status: true,
       visibility: true,
       createdAt: true,
-      metrics: { select: { viewsCount: true } },
+      metrics: true,
     },
   },
 };

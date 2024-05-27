@@ -13,6 +13,7 @@ import {
 } from './dto';
 import { buildPlaylistQueryBody, paginate } from './utils';
 import { isUUID } from 'class-validator';
+import { Playlist, PlaylistMetrics, Video, VideoMetrics } from '@prisma/client';
 
 @Injectable()
 export class LibraryService {
@@ -49,11 +50,13 @@ export class LibraryService {
       this.prisma.playlist.count({ where: { creatorId } }),
     ]);
 
-    return paginate({
-      data: playlists || [],
-      count,
-      ...pagination,
-    });
+    return {
+      playlists: paginate({
+        data: playlists.map((p) => this.serializePlaylistWithMetrics(p)),
+        count,
+        ...pagination,
+      }),
+    };
   }
 
   async updatePlaylist(
@@ -95,11 +98,13 @@ export class LibraryService {
       include: { likedPlaylistItems: buildPlaylistQueryBody(pagination) },
     });
 
-    return paginate({
-      data: result?.likedPlaylistItems || [],
-      count: result?.itemsCount || 0,
-      ...pagination,
-    });
+    return {
+      playlistItems: paginate({
+        data: result?.likedPlaylistItems || [],
+        count: result?.itemsCount || 0,
+        ...pagination,
+      }),
+    };
   }
 
   async getDislikedPlaylist(creatorId: string, pagination: PaginationDto) {
@@ -108,11 +113,13 @@ export class LibraryService {
       include: { dislikedPlaylistItems: buildPlaylistQueryBody(pagination) },
     });
 
-    return paginate({
-      data: result?.dislikedPlaylistItems || [],
-      count: result?.itemsCount || 0,
-      ...pagination,
-    });
+    return {
+      playlistItems: paginate({
+        data: result?.dislikedPlaylistItems || [],
+        count: result?.itemsCount || 0,
+        ...pagination,
+      }),
+    };
   }
 
   async getWatchLaterPlaylist(creatorId: string, pagination: PaginationDto) {
@@ -121,11 +128,13 @@ export class LibraryService {
       include: { watchLaterPlaylistItems: buildPlaylistQueryBody(pagination) },
     });
 
-    return paginate({
-      data: result?.watchLaterPlaylistItems || [],
-      count: result?.itemsCount || 0,
-      ...pagination,
-    });
+    return {
+      playlistItems: paginate({
+        data: result?.watchLaterPlaylistItems || [],
+        count: result?.itemsCount || 0,
+        ...pagination,
+      }),
+    };
   }
 
   async getPlaylist(playlistId: string, pagination: PaginationDto) {
@@ -148,16 +157,15 @@ export class LibraryService {
       },
     });
 
-    return paginate({
-      data:
-        result?.playlistItems?.map(
-          (x) =>
-            (x.video.metrics.viewsCount =
-              `${x.video.metrics.viewsCount}` as any),
-        ) || [],
-      count: result?.playlistMetrics.itemsCount || 0,
-      ...pagination,
-    });
+    return {
+      ...result,
+      playlistItems: paginate({
+        data:
+          result?.playlistItems?.map((v) => this.serializeVideo(v.video)) || [],
+        count: result?.playlistMetrics?.itemsCount || 0,
+        ...pagination,
+      }),
+    };
   }
 
   async voteVideo(creatorId: string, videoId: string, voteType: string) {
@@ -363,9 +371,7 @@ export class LibraryService {
   async getVideoMetadata(videoId: string, creatorId?: string) {
     const video = await this.prisma.video.findUnique({
       where: { id: videoId },
-      select: {
-        metrics: { omit: { videoId: true } },
-      },
+      select: { metrics: true },
     });
 
     if (!video) return {};
@@ -391,13 +397,11 @@ export class LibraryService {
       ]);
 
       return {
-        ...video.metrics,
+        ...this.serializeVideoMetrics(video.metrics),
         userVote: isLiked ? 'Like' : isDisliked ? 'Dislike' : 'None',
       };
     } else {
-      return {
-        ...video.metrics,
-      };
+      return this.serializeVideoMetrics(video.metrics);
     }
   }
 
@@ -414,7 +418,7 @@ export class LibraryService {
       return null;
     }
 
-    return video;
+    return this.serializeVideo(video);
   }
 
   async getVideosCount(creatorId: string) {
@@ -445,11 +449,11 @@ export class LibraryService {
     const sortBy = sort?.sortBy ? sort.sortBy : 'createdAt';
     const sortOrder = sort?.sortOrder ? sort.sortOrder : 'desc';
 
-    return this.prisma.video.findMany({
+    const videos = await this.prisma.video.findMany({
       where: { creatorId, visibility: 'Public' },
       omit: { creatorId: true, status: true },
       include: {
-        metrics: { omit: { videoId: true } },
+        metrics: true,
         creator: true,
       },
       orderBy:
@@ -459,5 +463,36 @@ export class LibraryService {
       take: pagination.perPage,
       skip: (pagination.page - 1) * pagination.perPage,
     });
+
+    return videos.map((v) => this.serializeVideo(v));
+  }
+
+  private serializePlaylistWithMetrics(
+    playlist: Playlist & { playlistMetrics: PlaylistMetrics },
+  ) {
+    return {
+      ...playlist,
+      playlistMetrics: {
+        ...playlist.playlistMetrics,
+        viewsCount: playlist.playlistMetrics.viewsCount.toString(),
+      },
+    };
+  }
+
+  private serializeVideo(video: Partial<Video> & { metrics?: VideoMetrics }) {
+    return {
+      ...video,
+      metrics: this.serializeVideoMetrics(video?.metrics),
+    };
+  }
+
+  private serializeVideoMetrics(metrics?: VideoMetrics) {
+    return metrics
+      ? {
+          viewsCount: metrics.viewsCount.toString(),
+          likesCount: metrics.likesCount.toString(),
+          dislikesCount: metrics.dislikesCount.toString(),
+        }
+      : {};
   }
 }
