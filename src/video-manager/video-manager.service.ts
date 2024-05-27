@@ -39,7 +39,7 @@ export class VideoManagerService {
         },
       });
       this.logger.log(`[Create] Video (${payload.id}) is created`);
-    } catch (e) {
+    } catch {
       this.logger.error(
         `[Create] An error occurred when creating video (${payload.id})`,
       );
