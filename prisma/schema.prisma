@@ -69,7 +69,7 @@ model VideoMetrics {
   likesCount          BigInt    @default(0) @map("likes_count")
   dislikesCount       BigInt    @default(0) @map("dislikes_count")
   viewsCountUpdatedAt DateTime? @map("views_count_updated_at") @db.Timestamptz(6)
-  nextSyncAt          DateTime? @map("votes_count_updated_at") @db.Timestamptz(6)
+  nextSyncAt          DateTime? @map("next_sync_at") @db.Timestamptz(6)
 
   @@index([viewsCount])
   @@index([likesCount])
@@ -78,16 +78,16 @@ model VideoMetrics {
 }
 
 model Playlist {
-  id              String             @id @default(uuid()) @db.Uuid
-  creatorId       String             @map("creator_id") @db.Uuid
-  creator         Creator            @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-  title           String
-  description     String?
-  visibility      PlaylistVisibility
-  createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
-  playlistItems   PlaylistItem[]
-  playlistMetrics PlaylistMetrics?
+  id          String             @id @default(uuid()) @db.Uuid
+  creatorId   String             @map("creator_id") @db.Uuid
+  creator     Creator            @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  visibility  PlaylistVisibility
+  createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  videos      PlaylistItem[]
+  metrics     PlaylistMetrics?
 
   @@index([creatorId])
   @@index([creatorId, visibility])
@@ -123,10 +123,10 @@ model PlaylistItem {
 }
 
 model LikedPlaylist {
-  creatorId          String              @id @map("creator_id") @db.Uuid
-  creator            Creator             @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-  itemsCount         Int                 @map("items_count")
-  likedPlaylistItems LikedPlaylistItem[]
+  creatorId  String              @id @map("creator_id") @db.Uuid
+  creator    Creator             @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  itemsCount Int                 @map("items_count")
+  videos     LikedPlaylistItem[]
 
   @@map("liked_playlists")
 }
@@ -142,10 +142,10 @@ model LikedPlaylistItem {
 }
 
 model DislikedPlaylist {
-  creatorId             String                 @id @map("creator_id") @db.Uuid
-  creator               Creator                @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-  itemsCount            Int                    @map("items_count")
-  dislikedPlaylistItems DislikedPlaylistItem[]
+  creatorId  String                 @id @map("creator_id") @db.Uuid
+  creator    Creator                @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  itemsCount Int                    @map("items_count")
+  videos     DislikedPlaylistItem[]
 
   @@map("disliked_playlists")
 }
@@ -161,10 +161,10 @@ model DislikedPlaylistItem {
 }
 
 model WatchLaterPlaylist {
-  creatorId               String                   @id @map("creator_id") @db.Uuid
-  creator                 Creator                  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-  itemsCount              Int                      @map("items_count")
-  watchLaterPlaylistItems WatchLaterPlaylistItem[]
+  creatorId  String                   @id @map("creator_id") @db.Uuid
+  creator    Creator                  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  itemsCount Int                      @map("items_count")
+  videos     WatchLaterPlaylistItem[]
 
   @@map("watch_later_playlists")
 }

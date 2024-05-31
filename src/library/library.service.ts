@@ -26,7 +26,7 @@ export class LibraryService {
       data: {
         creatorId,
         ...dto,
-        playlistMetrics: {
+        metrics: {
           create: {
             itemsCount: 0,
             viewsCount: 0,
@@ -36,13 +36,50 @@ export class LibraryService {
     });
   }
 
+  async getCreatorPublicPlaylists(
+    targetCreatorId: string,
+    currentCreatorId: string,
+  ) {
+    const playlists = await this.prisma.playlist.findMany({
+      where: {
+        creatorId: targetCreatorId,
+        visibility: targetCreatorId !== currentCreatorId ? 'Public' : undefined,
+      },
+      select: {
+        id: true,
+        title: true,
+        videos: {
+          select: {
+            video: {
+              select: {
+                thumbnailUrl: true,
+              },
+            },
+          },
+          take: 1,
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
+        visibility: true,
+        metrics: true,
+        createdAt: true,
+      },
+    });
+
+    return playlists.map((p) => ({
+      ...p,
+      metrics: this.serializePlaylistMetrics(p.metrics),
+    }));
+  }
+
   async getPlaylistsInfosBySelf(creatorId: string, pagination: PaginationDto) {
     const [playlists, count] = await this.prisma.$transaction([
       this.prisma.playlist.findMany({
         where: { creatorId },
         include: {
           creator: true,
-          playlistMetrics: true,
+          metrics: true,
         },
         take: pagination.perPage,
         skip: (pagination.page - 1) * pagination.perPage,
@@ -50,13 +87,11 @@ export class LibraryService {
       this.prisma.playlist.count({ where: { creatorId } }),
     ]);
 
-    return {
-      playlists: paginate({
-        data: playlists.map((p) => this.serializePlaylistWithMetrics(p)),
-        count,
-        ...pagination,
-      }),
-    };
+    return paginate({
+      data: playlists.map((p) => this.serializePlaylistWithMetrics(p)),
+      count,
+      ...pagination,
+    });
   }
 
   async updatePlaylist(
@@ -95,45 +130,65 @@ export class LibraryService {
   async getLikedPlaylist(creatorId: string, pagination: PaginationDto) {
     const result = await this.prisma.likedPlaylist.findUnique({
       where: { creatorId },
-      include: { likedPlaylistItems: buildPlaylistQueryBody(pagination) },
+      include: { videos: buildPlaylistQueryBody(pagination) },
     });
 
     return {
-      playlistItems: paginate({
-        data: result?.likedPlaylistItems || [],
-        count: result?.itemsCount || 0,
+      id: result.creatorId,
+      title: 'liked_playlist',
+      videos: paginate({
+        data: result.videos?.map((item) => this.serializeVideo(item.video)),
+        count: result.itemsCount,
         ...pagination,
       }),
+      metrics: {
+        itemsCount: result.itemsCount,
+        viewsCount: 0,
+      },
     };
   }
 
   async getDislikedPlaylist(creatorId: string, pagination: PaginationDto) {
     const result = await this.prisma.dislikedPlaylist.findUnique({
       where: { creatorId },
-      include: { dislikedPlaylistItems: buildPlaylistQueryBody(pagination) },
+      include: { videos: buildPlaylistQueryBody(pagination) },
     });
 
+    if (!result) throw new BadRequestException('Playlist not found');
+
     return {
-      playlistItems: paginate({
-        data: result?.dislikedPlaylistItems || [],
-        count: result?.itemsCount || 0,
+      id: result.creatorId,
+      title: 'disliked_playlist',
+      videos: paginate({
+        data: result.videos?.map((item) => this.serializeVideo(item.video)),
+        count: result.itemsCount,
         ...pagination,
       }),
+      metrics: {
+        itemsCount: result.itemsCount,
+        viewsCount: 0,
+      },
     };
   }
 
   async getWatchLaterPlaylist(creatorId: string, pagination: PaginationDto) {
     const result = await this.prisma.watchLaterPlaylist.findUnique({
       where: { creatorId },
-      include: { watchLaterPlaylistItems: buildPlaylistQueryBody(pagination) },
+      include: { videos: buildPlaylistQueryBody(pagination) },
     });
 
     return {
-      playlistItems: paginate({
-        data: result?.watchLaterPlaylistItems || [],
-        count: result?.itemsCount || 0,
+      id: result.creatorId,
+      title: 'watch_later_playlist',
+      videos: paginate({
+        data: result.videos?.map((item) => this.serializeVideo(item.video)),
+        count: result.itemsCount,
         ...pagination,
       }),
+      metrics: {
+        itemsCount: result.itemsCount,
+        viewsCount: 0,
+      },
     };
   }
 
@@ -152,20 +207,34 @@ export class LibraryService {
         createdAt: true,
         updatedAt: true,
         creator: true,
-        playlistItems: buildPlaylistQueryBody(pagination),
-        playlistMetrics: true,
+        videos: buildPlaylistQueryBody(pagination),
+        metrics: true,
       },
     });
 
+    if (!result) throw new BadRequestException('Playlist not found');
+
     return {
       ...result,
-      playlistItems: paginate({
-        data:
-          result?.playlistItems?.map((v) => this.serializeVideo(v.video)) || [],
-        count: result?.playlistMetrics?.itemsCount || 0,
+      videos: paginate({
+        data: result?.videos?.map((v) => this.serializeVideo(v.video)),
+        count: result?.metrics?.itemsCount,
         ...pagination,
       }),
+      metrics: this.serializePlaylistMetrics(result?.metrics),
     };
+  }
+
+  async isIn(videoId: string, creatorId: string) {
+    const playlists = await this.prisma.playlist.findMany({
+      where: {
+        creatorId,
+        videos: { some: { videoId } },
+      },
+      select: { id: true },
+    });
+
+    return playlists.map((p) => p.id);
   }
 
   async voteVideo(creatorId: string, videoId: string, voteType: string) {
@@ -210,22 +279,42 @@ export class LibraryService {
     videoId: string,
     disliked: boolean,
   ) {
-    await this.prisma.$transaction([
-      this.prisma.likedPlaylistItem.create({
-        data: { likedPlaylistId: creatorId, videoId },
-      }),
-      this.prisma.likedPlaylist.update({
-        where: { creatorId },
-        data: { itemsCount: { increment: 1 } },
-      }),
-      this.prisma.videoMetrics.update({
+    await this.prisma.$transaction(async (tx) => {
+      await Promise.all([
+        tx.likedPlaylistItem.create({
+          data: { likedPlaylistId: creatorId, videoId },
+        }),
+        tx.likedPlaylist.update({
+          where: { creatorId },
+          data: { itemsCount: { increment: 1 } },
+        }),
+      ]);
+
+      if (disliked) {
+        await Promise.all([
+          tx.dislikedPlaylistItem.delete({
+            where: {
+              dislikedPlaylistId_videoId: {
+                dislikedPlaylistId: creatorId,
+                videoId,
+              },
+            },
+          }),
+          tx.dislikedPlaylist.update({
+            where: { creatorId },
+            data: { itemsCount: { decrement: 1 } },
+          }),
+        ]);
+      }
+
+      await tx.videoMetrics.update({
         where: { videoId },
         data: {
           likesCount: { increment: 1 },
           ...(disliked && { dislikesCount: { decrement: 1 } }),
         },
-      }),
-    ]);
+      });
+    });
   }
 
   async addToDislikedPlaylist(
@@ -233,22 +322,42 @@ export class LibraryService {
     videoId: string,
     liked: boolean,
   ) {
-    await this.prisma.$transaction([
-      this.prisma.dislikedPlaylistItem.create({
-        data: { dislikedPlaylistId: creatorId, videoId },
-      }),
-      this.prisma.dislikedPlaylist.update({
-        where: { creatorId },
-        data: { itemsCount: { increment: 1 } },
-      }),
-      this.prisma.videoMetrics.update({
+    await this.prisma.$transaction(async (tx) => {
+      await Promise.all([
+        tx.dislikedPlaylistItem.create({
+          data: { dislikedPlaylistId: creatorId, videoId },
+        }),
+        tx.dislikedPlaylist.update({
+          where: { creatorId },
+          data: { itemsCount: { increment: 1 } },
+        }),
+      ]);
+
+      if (liked) {
+        await Promise.all([
+          tx.likedPlaylistItem.delete({
+            where: {
+              likedPlaylistId_videoId: {
+                likedPlaylistId: creatorId,
+                videoId,
+              },
+            },
+          }),
+          tx.likedPlaylist.update({
+            where: { creatorId },
+            data: { itemsCount: { decrement: 1 } },
+          }),
+        ]);
+      }
+
+      await tx.videoMetrics.update({
         where: { videoId },
         data: {
           dislikesCount: { increment: 1 },
           ...(liked && { likesCount: { decrement: 1 } }),
         },
-      }),
-    ]);
+      });
+    });
   }
 
   async addToWatchLaterPlaylist(creatorId: string, videoId: string) {
@@ -325,20 +434,20 @@ export class LibraryService {
   }
 
   async removeFromWatchLaterPlaylist(creatorId: string, videoId: string) {
-    await this.prisma.$transaction(async (tx) => {
-      await tx.watchLaterPlaylistItem.delete({
+    await this.prisma.$transaction([
+      this.prisma.watchLaterPlaylistItem.delete({
         where: {
           watchLaterPlaylistId_videoId: {
             watchLaterPlaylistId: creatorId,
             videoId,
           },
         },
-      });
-      await tx.watchLaterPlaylist.update({
+      }),
+      this.prisma.watchLaterPlaylist.update({
         where: { creatorId },
         data: { itemsCount: { decrement: 1 } },
-      });
-    });
+      }),
+    ]);
   }
 
   async removeFromPlaylist(
@@ -357,15 +466,15 @@ export class LibraryService {
 
     if (playlist.creatorId !== creatorId) throw new ForbiddenException();
 
-    await this.prisma.$transaction(async (tx) => {
-      await tx.playlistItem.delete({
+    await this.prisma.$transaction([
+      this.prisma.playlistItem.delete({
         where: { playlistId_videoId: { playlistId, videoId } },
-      });
-      await tx.playlistMetrics.update({
+      }),
+      this.prisma.playlistMetrics.update({
         where: { playlistId },
         data: { itemsCount: { decrement: 1 } },
-      });
-    });
+      }),
+    ]);
   }
 
   async getVideoMetadata(videoId: string, creatorId?: string) {
@@ -468,13 +577,13 @@ export class LibraryService {
   }
 
   private serializePlaylistWithMetrics(
-    playlist: Playlist & { playlistMetrics: PlaylistMetrics },
+    playlist: Playlist & { metrics: PlaylistMetrics },
   ) {
     return {
       ...playlist,
-      playlistMetrics: {
-        ...playlist.playlistMetrics,
-        viewsCount: playlist.playlistMetrics.viewsCount.toString(),
+      metrics: {
+        ...playlist.metrics,
+        viewsCount: playlist.metrics.viewsCount.toString(),
       },
     };
   }
@@ -484,6 +593,15 @@ export class LibraryService {
       ...video,
       metrics: this.serializeVideoMetrics(video?.metrics),
     };
+  }
+
+  private serializePlaylistMetrics(metrics?: PlaylistMetrics) {
+    return metrics
+      ? {
+          ...metrics,
+          viewsCount: metrics.viewsCount.toString(),
+        }
+      : {};
   }
 
   private serializeVideoMetrics(metrics?: VideoMetrics) {

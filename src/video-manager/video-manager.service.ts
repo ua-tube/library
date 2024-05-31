@@ -9,6 +9,8 @@ export class VideoManagerService {
   constructor(private readonly prisma: PrismaService) {}
 
   async createVideo(payload: CreateVideoDto) {
+    this.logger.log(`Video (${payload.id}) create is called`);
+
     const video = await this.prisma.video.findUnique({
       where: { id: payload.id },
       select: { id: true },
@@ -47,6 +49,8 @@ export class VideoManagerService {
   }
 
   async updateVideo(payload: UpdateVideoDto) {
+    this.logger.log(`Video (${payload.id}) update is called`);
+
     const video = await this.prisma.video.findUnique({
       where: { id: payload.id },
       select: { id: true },
@@ -66,6 +70,7 @@ export class VideoManagerService {
           previewThumbnailUrl: payload.previewThumbnailUrl,
           visibility: payload.visibility,
           status: payload.status,
+          lengthSeconds: payload?.lengthSeconds,
         },
       });
       this.logger.log(`[Update] Video (${payload.id}) is updated`);
@@ -77,6 +82,8 @@ export class VideoManagerService {
   }
 
   async unregisterVideo(payload: UnregisterVideoDto) {
+    this.logger.log(`Video (${payload.videoId}) unregister is called`);
+
     const video = await this.prisma.video.findUnique({
       where: { id: payload.videoId },
       select: { status: true },

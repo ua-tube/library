@@ -8,7 +8,7 @@ import { ackMessage } from '../common/utils';
 export class HistoryController {
   constructor(private readonly historyService: HistoryService) {}
 
-  @EventPattern('video_views_metrics_sync')
+  @EventPattern('update_video_views_metrics')
   async handleVideoViewsMetricsSync(
     @Payload() payload: VideoViewsMetricsSyncDto,
     @Ctx() context: RmqContext,

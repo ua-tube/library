@@ -53,6 +53,27 @@ export class LibraryController {
     return this.libraryService.createPlaylist(dto, userId);
   }
 
+  @UseGuards(OptionalAuthUserGuard)
+  @Get('playlists/by-creator/:creatorId')
+  getCreatorPublicPlaylists(
+    @Param('creatorId', ParseUUIDPipe) targetCreatorId: string,
+    @UserId() userId?: string,
+  ) {
+    return this.libraryService.getCreatorPublicPlaylists(
+      targetCreatorId,
+      userId,
+    );
+  }
+
+  @UseGuards(AuthUserGuard)
+  @Get('playlists/ids-where/:videoId')
+  idsWhereVideo(
+    @Param('videoId', ParseUUIDPipe) videoId: string,
+    @UserId() userId: string,
+  ) {
+    return this.libraryService.isIn(videoId, userId);
+  }
+
   @UseGuards(AuthUserGuard)
   @Get('playlists/infos/self')
   getPlaylistsInfosBySelf(
