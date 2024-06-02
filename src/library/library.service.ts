@@ -13,7 +13,7 @@ import {
 } from './dto';
 import { buildPlaylistQueryBody, paginate } from './utils';
 import { isUUID } from 'class-validator';
-import { Playlist, Video, VideoMetrics } from '@prisma/client';
+import { Video, VideoMetrics } from '@prisma/client';
 
 @Injectable()
 export class LibraryService {
