@@ -13,7 +13,7 @@ import {
 } from './dto';
 import { buildPlaylistQueryBody, paginate } from './utils';
 import { isUUID } from 'class-validator';
-import { Playlist, PlaylistMetrics, Video, VideoMetrics } from '@prisma/client';
+import { Playlist, Video, VideoMetrics } from '@prisma/client';
 
 @Injectable()
 export class LibraryService {
@@ -26,12 +26,7 @@ export class LibraryService {
       data: {
         creatorId,
         ...dto,
-        metrics: {
-          create: {
-            itemsCount: 0,
-            viewsCount: 0,
-          },
-        },
+        itemsCount: 0,
       },
     });
   }
@@ -61,16 +56,13 @@ export class LibraryService {
             createdAt: 'asc',
           },
         },
+        itemsCount: true,
         visibility: true,
-        metrics: true,
         createdAt: true,
       },
     });
 
-    return playlists.map((p) => ({
-      ...p,
-      metrics: this.serializePlaylistMetrics(p.metrics),
-    }));
+    return playlists;
   }
 
   async getPlaylistsInfosBySelf(creatorId: string, pagination: PaginationDto) {
@@ -79,7 +71,6 @@ export class LibraryService {
         where: { creatorId },
         include: {
           creator: true,
-          metrics: true,
         },
         take: pagination.perPage,
         skip: (pagination.page - 1) * pagination.perPage,
@@ -88,7 +79,7 @@ export class LibraryService {
     ]);
 
     return paginate({
-      data: playlists.map((p) => this.serializePlaylistWithMetrics(p)),
+      data: playlists,
       count,
       ...pagination,
     });
@@ -204,11 +195,11 @@ export class LibraryService {
         title: true,
         description: true,
         visibility: true,
+        itemsCount: true,
         createdAt: true,
         updatedAt: true,
         creator: true,
         videos: buildPlaylistQueryBody(pagination),
-        metrics: true,
       },
     });
 
@@ -217,11 +208,10 @@ export class LibraryService {
     return {
       ...result,
       videos: paginate({
-        data: result?.videos?.map((v) => this.serializeVideo(v.video)),
-        count: result?.metrics?.itemsCount,
+        data: result.videos.map((v) => this.serializeVideo(v.video)),
+        count: result.itemsCount,
         ...pagination,
       }),
-      metrics: this.serializePlaylistMetrics(result?.metrics),
     };
   }
 
@@ -384,8 +374,8 @@ export class LibraryService {
       await tx.playlistItem.create({
         data: { playlistId, videoId },
       });
-      await tx.playlistMetrics.update({
-        where: { playlistId },
+      await tx.playlist.update({
+        where: { id: playlistId },
         data: { itemsCount: { increment: 1 } },
       });
     });
@@ -470,8 +460,8 @@ export class LibraryService {
       this.prisma.playlistItem.delete({
         where: { playlistId_videoId: { playlistId, videoId } },
       }),
-      this.prisma.playlistMetrics.update({
-        where: { playlistId },
+      this.prisma.playlist.update({
+        where: { id: playlistId },
         data: { itemsCount: { decrement: 1 } },
       }),
     ]);
@@ -576,32 +566,11 @@ export class LibraryService {
     return videos.map((v) => this.serializeVideo(v));
   }
 
-  private serializePlaylistWithMetrics(
-    playlist: Playlist & { metrics: PlaylistMetrics },
-  ) {
-    return {
-      ...playlist,
-      metrics: {
-        ...playlist.metrics,
-        viewsCount: playlist.metrics.viewsCount.toString(),
-      },
-    };
-  }
-
   private serializeVideo(video: Partial<Video> & { metrics?: VideoMetrics }) {
     return {
       ...video,
       metrics: this.serializeVideoMetrics(video?.metrics),
     };
-  }
-
-  private serializePlaylistMetrics(metrics?: PlaylistMetrics) {
-    return metrics
-      ? {
-          ...metrics,
-          viewsCount: metrics.viewsCount.toString(),
-        }
-      : {};
   }
 
   private serializeVideoMetrics(metrics?: VideoMetrics) {

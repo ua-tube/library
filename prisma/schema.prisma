@@ -84,23 +84,14 @@ model Playlist {
   title       String
   description String?
   visibility  PlaylistVisibility
+  itemsCount  Int                @map("items_count")
   createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
   videos      PlaylistItem[]
-  metrics     PlaylistMetrics?
 
   @@index([creatorId])
   @@index([creatorId, visibility])
   @@map("playlists")
-}
-
-model PlaylistMetrics {
-  playlistId String   @id @map("playlist_id") @db.Uuid
-  playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
-  viewsCount BigInt   @map("views_count")
-  itemsCount Int      @map("items_count")
-
-  @@map("playlist_metrics")
 }
 
 enum PlaylistVisibility {
